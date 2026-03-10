@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Chat App</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen">
+    <div class="max-w-3xl mx-auto px-4 py-10">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-2">AI Chat App</h1>
+            <p class="text-slate-400">Built with ASP.NET + Tailwind + OpenAI</p>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+            <div id="chatBox" class="h-[500px] overflow-y-auto p-6 space-y-4 bg-slate-900"></div>
+
+            <div class="border-t border-slate-800 p-4 bg-slate-950">
+                <form id="chatForm" class="flex gap-3">
+                    <input
+                        id="messageInput"
+                        type="text"
+                        placeholder="Ask something..."
+                        class="flex-1 rounded-xl bg-slate-800 border border-slate-700 px-4 py-3 outline-none focus:ring-2 focus:ring-cyan-500"
+                    />
+                    <button
+                        type="submit"
+                        class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold px-5 py-3 rounded-xl transition"
+                    >
+                        Send
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatForm = document.getElementById("chatForm");
+        const messageInput = document.getElementById("messageInput");
+        const chatBox = document.getElementById("chatBox");
+
+        const API_URL = "https://jynnaichatapp.azurewebsites.net/api/chat";
+
+        function addMessage(text, sender) {
+            const wrapper = document.createElement("div");
+            wrapper.className = `flex ${sender === "user" ? "justify-end" : "justify-start"}`;
+
+            const bubble = document.createElement("div");
+            bubble.className =
+                sender === "user"
+                    ? "max-w-[80%] bg-cyan-500 text-slate-950 px-4 py-3 rounded-2xl rounded-br-md"
+                    : "max-w-[80%] bg-slate-800 text-white px-4 py-3 rounded-2xl rounded-bl-md";
+
+            bubble.textContent = text;
+            wrapper.appendChild(bubble);
+            chatBox.appendChild(wrapper);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function addTypingIndicator() {
+            const wrapper = document.createElement("div");
+            wrapper.className = "flex justify-start";
+            wrapper.id = "typingIndicator";
+
+            const bubble = document.createElement("div");
+            bubble.className = "max-w-[80%] bg-slate-800 text-slate-300 px-4 py-3 rounded-2xl rounded-bl-md";
+            bubble.textContent = "AI is thinking...";
+            wrapper.appendChild(bubble);
+
+            chatBox.appendChild(wrapper);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.getElementById("typingIndicator");
+            if (indicator) indicator.remove();
+        }
+
+        chatForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            addMessage(message, "user");
+            messageInput.value = "";
+            addTypingIndicator();
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                removeTypingIndicator();
+
+                if (!response.ok) {
+                    const err = await response.text();
+                    addMessage("Error: " + err, "ai");
+                    return;
+                }
+
+                const data = await response.json();
+                addMessage(data.reply, "ai");
+            } catch (error) {
+                removeTypingIndicator();
+                addMessage("Something went wrong while calling the API.", "ai");
+                console.error(error);
+            }
+        });
+    </script>
+</body>
+</html>
